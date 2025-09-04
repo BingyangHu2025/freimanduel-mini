@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Freiman Duel — Sumset Showdown</title>
+  <style>
+    :root {
+      --bg: #0f172a;           /* slate-900 */
+      --panel: #111827;        /* gray-900 */
+      --panel-2: #0b1022;      /* deep navy */
+      --text: #e5e7eb;         /* gray-200 */
+      --muted: #94a3b8;        /* slate-400 */
+      --accent: #f59e0b;       /* amber-500 */
+      --red: #ef4444;
+      --blue: #3b82f6;
+      --win: #10b981;
+      --lose: #ef4444;
+      --tie: #f59e0b;
+    }
+
+    html, body {
+      margin: 0; padding: 0; background: linear-gradient(180deg, var(--bg), #0b1022);
+      color: var(--text); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      min-height: 100vh; line-height: 1.45;
+    }
+
+    .wrap {
+      max-width: 1000px; margin: 24px auto; padding: 0 16px 32px;
+      display: grid; gap: 16px;
+    }
+
+    header {
+      background: radial-gradient(1200px 400px at 50% -50%, rgba(245, 158, 11, .18), transparent 70%);
+      padding: 12px 0 6px; text-align: center;
+    }
+    header h1 { margin: 0; font-size: clamp(24px, 4vw, 36px); letter-spacing: 0.2px; }
+    header p { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+
+    .toolbar {
+      display: grid; grid-template-columns: 1fr auto auto; gap: 12px; align-items: center;
+      background: rgba(17, 24, 39, .6); border: 1px solid rgba(148, 163, 184, .15);
+      padding: 12px; border-radius: 14px; backdrop-filter: blur(6px);
+    }
+
+    .turn {
+      font-weight: 600; font-size: 15px;
+    }
+    .turn .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; vertical-align: middle; }
+    .turn .red { background: var(--red); box-shadow: 0 0 0 3px rgba(239, 68, 68, .18);}
+    .turn .blue { background: var(--blue); box-shadow: 0 0 0 3px rgba(59, 130, 246, .18);}  
+
+    .btn { 
+      background: #1f2937; color: var(--text); border: 1px solid rgba(148, 163, 184, .25);
+      padding: 8px 12px; border-radius: 10px; font-weight: 600; cursor: pointer; transition: .15s ease; font-size: 14px;
+    }
+    .btn:hover { filter: brightness(1.1); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    .board {
+      display: grid; grid-template-columns: 1.2fr .8fr; gap: 16px;
+    }
+    @media (max-width: 800px) { .board { grid-template-columns: 1fr; } }
+
+    .pool {
+      background: rgba(17, 24, 39, .65); border: 1px solid rgba(148, 163, 184, .15);
+      border-radius: 14px; padding: 12px; display: grid; gap: 10px;
+    }
+    .pool h2 { margin: 4px 4px 0; font-size: 16px; color: var(--muted); font-weight: 600; }
+
+    .nums {
+      display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 8px;
+    }
+    .num {
+      appearance: none; border: 1px solid rgba(148,163,184,.25); background: #0f172a; color: var(--text);
+      border-radius: 10px; padding: 10px 0; font-weight: 700; font-size: 14px; cursor: pointer; transition: .15s ease; position: relative;
+    }
+    .num:hover { transform: translateY(-1px); box-shadow: 0 8px 18px rgba(0,0,0,.25); }
+    .num[disabled] { opacity: .6; cursor: not-allowed; transform: none; box-shadow: none; }
+    .num[data-owner="R"] { background: rgba(239, 68, 68, .15); border-color: rgba(239, 68, 68, .35); }
+    .num[data-owner="B"] { background: rgba(59, 130, 246, .15); border-color: rgba(59, 130, 246, .35); }
+
+    .side {
+      display: grid; gap: 12px;
+    }
+    .card {
+      background: rgba(17, 24, 39, .65); border: 1px solid rgba(148,163,184,.15);
+      border-radius: 14px; padding: 12px; display: grid; gap: 8px;
+    }
+
+    .label { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+
+    .row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .pill {
+      padding: 6px 10px; border-radius: 999px; font-weight: 700; font-size: 13px; border: 1px solid rgba(148,163,184,.25);
+    }
+    .pill.red { background: rgba(239, 68, 68, .12); border-color: rgba(239, 68, 68, .35); }
+    .pill.blue { background: rgba(59, 130, 246, .12); border-color: rgba(59, 130, 246, .35); }
+
+    .sumset { font-size: 14px; line-height: 1.4; }
+    .sumset .size { font-weight: 800; }
+
+    .result {
+      background: linear-gradient(180deg, rgba(31,41,55,.6), rgba(17,24,39,.6));
+      border: 1px solid rgba(148,163,184,.2); border-radius: 14px; padding: 12px; text-align: center; font-weight: 800;
+    }
+    .result.win { color: #d1fae5; box-shadow: 0 0 0 2px rgba(16, 185, 129, .18) inset; }
+    .result.lose { color: #fee2e2; box-shadow: 0 0 0 2px rgba(239, 68, 68, .18) inset; }
+    .result.tie { color: #fef3c7; box-shadow: 0 0 0 2px rgba(245, 158, 11, .18) inset; }
+
+    .footer {
+      display: grid; gap: 16px; margin-top: 8px;
+    }
+    .pane {
+      background: rgba(17, 24, 39, .6); border: 1px solid rgba(148,163,184,.15);
+      border-radius: 14px; padding: 16px; display: grid; gap: 8px;
+    }
+    .pane h3 { margin: 0; font-size: 16px; }
+    .pane p { margin: 0; color: var(--muted); font-size: 14px; }
+    ul.clean { margin: 0; padding-left: 18px; color: var(--muted); }
+    ul.clean li { margin: 6px 0; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Freiman Duel — Sumset Showdown</h1>
+      <p>Red and Blue draft numbers. Smaller self-sum wins.</p>
+    </header>
+
+    <div class="toolbar">
+      <div class="turn" id="turnBox">
+        <span class="dot red" id="turnDot"></span>
+        <span id="turnText">Turn: Red</span>
+      </div>
+      <button class="btn" id="undoBtn" title="Undo last pick">Undo</button>
+      <button class="btn" id="resetBtn" title="Start a fresh duel">New Game</button>
+    </div>
+
+    <main class="board" aria-live="polite">
+      <section class="pool" aria-label="Number Pool">
+        <h2>Draft Pool (1–20)</h2>
+        <div class="nums" id="numGrid"></div>
+      </section>
+
+      <aside class="side">
+        <div class="card" id="cardA">
+          <div class="label">Red — Set A</div>
+          <div class="row" id="setA"></div>
+          <div class="sumset" id="sumA"></div>
+        </div>
+        <div class="card" id="cardB">
+          <div class="label">Blue — Set B</div>
+          <div class="row" id="setB"></div>
+          <div class="sumset" id="sumB"></div>
+        </div>
+        <div class="result" id="resultBox" role="status"></div>
+      </aside>
+    </main>
+
+    <section class="footer">
+      <div class="pane">
+        <h3>How to Play</h3>
+        <ul class="clean">
+          <li>Red goes first. Players alternately pick <strong>distinct</strong> numbers from 1 to 20.</li>
+          <li>Each player selects exactly four numbers: Red builds <strong>A</strong>, Blue builds <strong>B</strong>.</li>
+          <li>After eight picks, the game compares <strong>A + A</strong> and <strong>B + B</strong> (all pairwise sums with repetition, duplicates removed).</li>
+          <li>The player with the <strong>smaller</strong> self-sumset size wins. If equal, it is a tie.</li>
+        </ul>
+      </div>
+
+      <div class="pane">
+        <h3>Freiman’s Theorem (informal)</h3>
+        <p>
+          In the integers, a finite set with a <em>small</em> sumset has strong internal structure: it is contained in a low‑rank generalized arithmetic
+          progression of comparable size. In short: <strong>small self‑sum ⇒ structured set</strong>.
+        </p>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const numGrid = document.getElementById('numGrid');
+    const setAEl = document.getElementById('setA');
+    const setBEl = document.getElementById('setB');
+    const sumAEl = document.getElementById('sumA');
+    const sumBEl = document.getElementById('sumB');
+    const resultBox = document.getElementById('resultBox');
+    const turnText = document.getElementById('turnText');
+    const turnDot = document.getElementById('turnDot');
+    const resetBtn = document.getElementById('resetBtn');
+    const undoBtn = document.getElementById('undoBtn');
+
+    let A = []; // Red
+    let B = []; // Blue
+    let available = new Map(); // id -> owner/null
+    let turn = 'R';
+    let history = []; // stack of {n, owner}
+
+    function init() {
+      // Setup numbers 1..20
+      numGrid.innerHTML = '';
+      available.clear();
+      for (let n = 1; n <= 20; n++) {
+        const btn = document.createElement('button');
+        btn.className = 'num';
+        btn.textContent = String(n);
+        btn.dataset.n = n;
+        btn.addEventListener('click', () => pick(n));
+        numGrid.appendChild(btn);
+        available.set(n, null);
+      }
+      A = []; B = []; history = []; turn = 'R';
+      updateTurnUI();
+      renderSets();
+      resultBox.textContent = '';
+      resultBox.className = 'result';
+      sumAEl.textContent = '';
+      sumBEl.textContent = '';
+      undoBtn.disabled = true;
+    }
+
+    function updateTurnUI() {
+      const who = turn === 'R' ? 'Red' : 'Blue';
+      turnText.textContent = `Turn: ${who}`;
+      turnDot.className = 'dot ' + (turn === 'R' ? 'red' : 'blue');
+    }
+
+    function pick(n) {
+      // Ignore if game ended
+      if (A.length === 4 && B.length === 4) return;
+
+      const btn = [...numGrid.children].find(b => Number(b.dataset.n) === n);
+      if (!btn || btn.disabled) return;
+
+      // Assign to current player
+      if (turn === 'R' && A.length < 4) {
+        A.push(n);
+        btn.dataset.owner = 'R';
+      } else if (turn === 'B' && B.length < 4) {
+        B.push(n);
+        btn.dataset.owner = 'B';
+      } else {
+        return; // safety
+      }
+
+      btn.disabled = true;
+      available.set(n, turn);
+      history.push({ n, owner: turn });
+      undoBtn.disabled = false;
+
+      // Switch turn if picks remain
+      if (!(A.length === 4 && B.length === 4)) {
+        turn = (turn === 'R') ? 'B' : 'R';
+        updateTurnUI();
+      }
+
+      renderSets();
+
+      // If both have 4, compute results
+      if (A.length === 4 && B.length === 4) {
+        finish();
+      }
+    }
+
+    function undo() {
+      if (history.length === 0) return;
+      // If finished, allow undo to resume play
+      const last = history.pop();
+      const { n, owner } = last;
+      // Remove from A or B
+      if (owner === 'R') {
+        A = A.filter(x => x !== n);
+      } else {
+        B = B.filter(x => x !== n);
+      }
+      // Re-enable button
+      const btn = [...numGrid.children].find(b => Number(b.dataset.n) === n);
+      if (btn) {
+        btn.disabled = false;
+        btn.removeAttribute('data-owner');
+      }
+      available.set(n, null);
+
+      // Set turn to the owner who just undid (they replay)
+      turn = owner;
+      updateTurnUI();
+
+      // Clear result if previously finished
+      resultBox.textContent = '';
+      resultBox.className = 'result';
+      sumAEl.textContent = '';
+      sumBEl.textContent = '';
+
+      renderSets();
+      if (history.length === 0) undoBtn.disabled = true;
+    }
+
+    function renderSets() {
+      setAEl.innerHTML = '';
+      setBEl.innerHTML = '';
+      [...A].sort((a,b)=>a-b).forEach(n => setAEl.appendChild(tag(n, 'red')));
+      [...B].sort((a,b)=>a-b).forEach(n => setBEl.appendChild(tag(n, 'blue')));
+    }
+
+    function tag(n, color) {
+      const el = document.createElement('div');
+      el.className = `pill ${color}`;
+      el.textContent = n;
+      return el;
+    }
+
+    function sumset(arr) {
+      const s = new Set();
+      for (let i = 0; i < arr.length; i++) {
+        for (let j = 0; j < arr.length; j++) {
+          s.add(arr[i] + arr[j]);
+        }
+      }
+      return [...s].sort((a,b)=>a-b);
+    }
+
+    function finish() {
+      // Compute A+A and B+B
+      const a2 = sumset(A);
+      const b2 = sumset(B);
+      sumAEl.innerHTML = `<span class="size">|A + A| = ${a2.length}</span><br/>A + A = { ${a2.join(', ')} }`;
+      sumBEl.innerHTML = `<span class="size">|B + B| = ${b2.length}</span><br/>B + B = { ${b2.join(', ')} }`;
+
+      let verdict = '';
+      if (a2.length < b2.length) {
+        verdict = 'Red wins (smaller self-sumset).';
+        resultBox.className = 'result win';
+      } else if (a2.length > b2.length) {
+        verdict = 'Blue wins (smaller self-sumset).';
+        resultBox.className = 'result win';
+      } else {
+        verdict = 'Tie (equal self-sumset sizes).';
+        resultBox.className = 'result tie';
+      }
+      resultBox.textContent = verdict;
+    }
+
+    resetBtn.addEventListener('click', init);
+    undoBtn.addEventListener('click', undo);
+
+    // Keyboard: 1–20 quick-pick (requires Shift for 10–20 to avoid conflicts)
+    document.addEventListener('keydown', (e) => {
+      // Simple mapping: digits 1–9 pick 1..9; 0 picks 10; Alt+1..0 picks 11..20
+      if (e.altKey || e.metaKey || e.ctrlKey) return;
+      let target = null;
+      if (e.key >= '1' && e.key <= '9') target = Number(e.key);
+      if (e.key === '0') target = 10;
+      if (e.shiftKey && e.key >= '1' && e.key <= '9') target = 10 + Number(e.key);
+      if (e.shiftKey && e.key === '0') target = 20;
+      if (target != null) {
+        const btn = [...numGrid.children].find(b => Number(b.dataset.n) === target);
+        if (btn && !btn.disabled) {
+          pick(target);
+          e.preventDefault();
+        }
+      }
+    });
+
+    init();
+  </script>
+</body>
+</html>
